@@ -3,77 +3,53 @@ Dotenv.load
 require 'active_record'
 require 'httparty'
 require "sinatra/activerecord"
-require_relative 'models/recharge_subs_config'
+require_relative 'models/recharge_subs_config.rb'
 require 'minitest/autorun'
 
 module RechargeTest
-  class User_subs
-    def initialize
-    Dotenv.load
-    @recharge_access_token = ENV['RECHARGE_ACCESS_TOKEN']
-    @my_header = {
-        "X-Recharge-Access-Token" => @recharge_access_token
-    }
+  class Mini < Minitest::Test
+    attr_accessor :sub_id
+
+    def initialize(sub_id)
+      @sub_id = sub_id
+      Dotenv.load
+      @recharge_access_token = ENV['RECHARGE_ACCESS_TOKEN']
+      @my_header = {
+          "X-Recharge-Access-Token" => @recharge_access_token
+      }
     end
-    # pass in hash with subscription id (have another rake task gen list of ids?)
-    def pull(params)
-      @response = HTTParty.get("https://api.rechargeapps.com/subscriptions/#{params['subscription_id']}", :headers => @my_header)
+
+    def self.test_request_subscription
+      # = {sub_id: '14364784'}
+      sub_properties = self.pull
+      test_values =  RechargeSubsConfig.new
+      test_values.setup("614505873440", "6348420677664", "764204142729", "Desert Sage - 5 Items", "Desert Sage - 5 Items")
+      assert sub_properties["shopify_product_id"].to_s == test_values.shopify_product_id
+      assert sub_properties["shopify_variant_id"].to_s == test_values.shopify_variant_id
+      assert sub_properties["sku"] == test_values.sku
+      assert sub_properties["product_title"] == test_values.product_title
+      assert has_collection?(sub_properties) == test_values.collection_property
+    end
+
+    private
+
+    def pull
+      @response = HTTParty.get("https://api.rechargeapps.com/subscriptions/#{@sub_id}", :headers => @my_header)
       if @response.code == 200
-        return @response.body
+        return @response["subscription"]
       else
-        # LOG ERROR TO OUTPUT
         return @response
       end
     end
-  end
 
-  class Mini < Minitest::Test
-    def test_request_subscription
-      user_sub = User_subs.new
-      params = {subscription_id: '507621212192'}
-      sub_properties = user_sub.pull(params)
-      assert sub_properties == 
+    def has_collection?(sub_props)
+      sub_props["properties"].each do |item|
+        if item["name"] == "product_collection"
+          return item["value"]
+        end
+      end
+      return false
     end
   end
 
 end
-
-
-#  EXAMPLE RESPONSE
-# {
-#     "subscription": {
-#         "id": 13771142,
-#         "address_id": 9364792,
-#         "customer_id": 9476622,
-#         "created_at": "2018-03-27T14:26:12",
-#         "updated_at": "2018-03-27 14:26:12",
-#         "next_charge_scheduled_at": "2017-04-01T00:00:00",
-#         "cancelled_at": null,
-#         "product_title": "Sumatra Coffee",
-#         "variant_title": "Milk - a / b",
-#         "price": 12,
-#         "quantity": 1,
-#         "status": "ACTIVE",
-#         "shopify_product_id": 1255183683,
-#         "shopify_variant_id": 3844924611,
-#         "sku": null,
-#         "order_interval_unit": "day",
-#         "order_interval_frequency": "30",
-#         "charge_interval_frequency": "30",
-#         "cancellation_reason": null,
-#         "cancellation_reason_comments": null,
-#         "order_day_of_week": null,
-#         "order_day_of_month": null,
-#         "properties": [
-#             {
-#                 "name": "grind",
-#                 "value": "drip"
-#             },
-#             {
-#                 "name": "size",
-#                 "value": "medium"
-#             }
-#         ],
-#         "expire_after_specific_number_of_charges": 2
-#     }
-# }
