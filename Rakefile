@@ -9,7 +9,6 @@ require_relative 'models/recharge_subs_config.rb'
 namespace :test do
   desc 'pass in subscription_id, tests subscription properties'
   task :subscription, :sub_id do |t, args|
-      id = args.sub_id
-      RechargeTest::Mini.setup(id)
+    RechargeTest.start(args['sub_id'])
     end
   end
