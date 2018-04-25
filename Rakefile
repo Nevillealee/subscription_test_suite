@@ -12,3 +12,15 @@ namespace :test do
     RechargeTest.start(args['sub_id'])
     end
   end
+
+namespace :postgres do
+  desc 'pull recharge subs into db'
+  task :pull do
+    Postgres.pull_subs
+  end
+
+  desc 'delete recharge subscriptions table'
+  task :delete do
+    Postgres.delete_table
+  end
+end
